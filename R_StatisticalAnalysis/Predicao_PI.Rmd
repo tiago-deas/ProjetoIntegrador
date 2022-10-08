@@ -1,0 +1,496 @@
+---
+title: "Predição sobre renda e preço dos combustíveis utilizando o método de Regressão Linear no R"
+author: "Grupo 1 - Digital House"
+date: '2022-09-16'
+output: pdf_document
+---
+
+# Introdução
+
+Regressão Linear utilizando as variáveis de Renda, Preço da Gasolina, Preço do Diesel, e Preço do Etanol com o intuito de prever qual será os valores futuros para cada uma das variáveis mencionadas acima. Os resultados dessas predições serão usados em outras ferramentas que fazem parte do Projeto Integrador do Grupo 1 do curso de Analista de Dados da Digital House.
+
+# Carregando os pacotes que serão utilizados na predição
+
+```{r results='hide', message=FALSE, warning=FALSE}
+
+
+pacotes <- c("tidyverse","stringr","readxl", "ggpubr", "Hmisc","xlsx")
+
+if(sum(as.numeric(!pacotes %in% installed.packages())) != 0){
+  instalador <- pacotes[!pacotes %in% installed.packages()]
+  for(i in 1:length(instalador)) {
+    install.packages(instalador, dependencies = T)
+    break()}
+  sapply(pacotes, require, character = T) 
+} else {
+  sapply(pacotes, require, character = T) 
+}
+
+```
+
+# Parte 1 - Renda
+
+Carregando o dataset sobre renda do IBGE
+
+```{r}
+
+renda <- read_xlsx("renda.xlsx", col_names = T)
+```
+
+Plotando um scatter plot com correlação e p-value para ver como a renda e o ano se correlacionam
+
+```{r}
+
+ggplot(renda, aes(x = Ano, y = Renda)) +
+  geom_point(color = "blue") +
+  labs(
+    title = "Renda média por estado",
+    x = "Ano",
+    y = "Renda média",
+    caption = "Fonte: IBGE"
+  ) +
+  geom_smooth(method = "lm", color = "red")  +
+  stat_cor() +
+  stat_regline_equation(label.y = 180) +
+  theme_classic()
+  
+```
+Vemos que há uma leve **correlação positiva** (0,41) entre as variáveis *ano* e *renda*. Essa leve correlação é fácil de ser explicada devido as oscilações que a economia brasileira sofreu na última decada, devido a fatores políticos, economicos e sanitários (pandemia), no qual a renda média de alguns estados diminuiu e isso afetou substancialmente a correlação entre as duas variáveis. Provavelmente a correlação positiva seria maior se essas crises não tivessem acontecido nos últimos anos.
+
+
+**Criando o modelo preditivo**
+
+Algumas estatisticas descritivas e informações sobre o modelo de predição usando regressão linear
+
+```{r}
+
+modelo <- lm(Renda ~ Ano + Estado, data = renda)
+
+summary(modelo)
+```
+O **R2 acima de 95%** nos diz que o nosso modelo preditivo explica de forma satisfatória toda a variabilidade dos dados de resposta ao redor de sua média. Isso é um bom sinal sobre o quão bem o modelo se ajustou aos novos dados.
+
+Adicionando a predição de renda de 2022 até 2030 por estado no objeto "renda"
+
+```{r}
+
+p  <- predict(modelo, data.frame(Ano = 2022, Estado = renda$Estado))
+p2 <- predict(modelo, data.frame(Ano = 2023, Estado = renda$Estado))
+p3 <- predict(modelo, data.frame(Ano = 2024, Estado = renda$Estado))
+p4 <- predict(modelo, data.frame(Ano = 2025, Estado = renda$Estado))
+p5 <- predict(modelo, data.frame(Ano = 2026, Estado = renda$Estado))
+p6 <- predict(modelo, data.frame(Ano = 2027, Estado = renda$Estado))
+p7 <- predict(modelo, data.frame(Ano = 2028, Estado = renda$Estado))
+p8 <- predict(modelo, data.frame(Ano = 2029, Estado = renda$Estado))
+p9 <- predict(modelo, data.frame(Ano = 2030, Estado = renda$Estado))
+
+renda$"2022" <- p
+renda$"2023" <- p2
+renda$"2024" <- p3
+renda$"2025" <- p4
+renda$"2026" <- p5
+renda$"2027" <- p6
+renda$"2028" <- p7
+renda$"2029" <- p8
+renda$"2030" <- p9
+
+```
+
+
+Separando a predição em um novo dataset
+
+```{r}
+
+df_predict <- renda[ ,c(2, 4:12)] %>% unique()
+
+# Transpondo as colunas de anos para linhas para facilitar a analíse no R e Power BI
+
+df_predict <- df_predict %>% 
+  as_tibble() %>% 
+  pivot_longer(cols = "2022":"2030",
+               names_to = "Ano",
+               values_to = "Renda")
+
+# salvando a predição para ser usada no Dashboard do Power BI
+
+write.xlsx(df_predict, file = "predição_renda.xlsx")
+```
+
+# Visualizando as predições de renda por estado de 2022 até 2030
+
+```{r}
+
+df_predict %>% 
+  knitr::kable(caption = "Predição da renda mensal em reais por estado brasileiro")
+```
+
+
+# Plotando um Scatter Plot da predição 
+
+```{r}
+
+ggplot(df_predict, aes(x = Ano, y = Renda)) +
+  geom_point(color = "blue") +
+   labs(
+    title = "Predição da renda média por estado na próxima decada",
+    x = "Ano",
+    y = "Renda média",
+    caption = "Fonte: Grupo 1 - Digital House"
+  ) +
+  geom_smooth(method = "lm", aes(group=1), color = "green") +
+  stat_cor(aes(group=1)) +
+  theme_classic()
+
+
+```
+
+
+# Parte 2 - Preço do Diesel
+
+
+Carregando o dataset sobre preço do Diesel da ANP
+
+```{r}
+
+diesel <- read_xlsx("Diesel_preco.xlsx", col_names = T)
+```
+
+Plotando um scatter plot para verificar a correlação e o p-value da variável *ano* e *preço do diesel*
+
+```{r}
+
+ggplot(diesel, aes(x = ANO, y = Preco_Diesel)) +
+  geom_point(color = "blue") +
+  labs(
+    title = "Preço do Diesel por estado",
+    x = "Ano",
+    y = "Preço do Diesel",
+    caption = "Fonte: ANP"
+  ) +
+  geom_smooth(method = "lm", color = "red")  +
+  stat_cor() +
+  stat_regline_equation(label.y = 1) +
+  theme_classic()
+  
+```
+
+Podemos ver que há uma **correlação positiva** muito alta (0,92) entre o *ano* e o *preço do diesel*, e isso nos diz que o preço do diesel aumentou de forma constante no Brasil na última decada.
+
+**Criando o modelo preditivo**
+
+Algumas estatisticas descritivas e informações sobre o modelo de predição usando regressão linear
+
+```{r}
+
+modelo2 <- lm(Preco_Diesel ~ ANO + UF, data = diesel)
+
+summary(modelo2)
+```
+
+O **R2 de 90%** nos diz que o nosso modelo preditivo explica de forma satisfatória toda a variabilidade dos dados de resposta ao redor de sua média. Isso é um bom sinal sobre o quão bem o modelo se ajustou aos novos dados.
+
+Adicionadno a predição do preço do Diesel de 2022 até 2030 por estado no objeto "diesel"
+
+```{r}
+
+pb  <- predict(modelo2, data.frame(ANO = 2022, UF = diesel$UF))
+pb2 <- predict(modelo2, data.frame(ANO = 2023, UF = diesel$UF))
+pb3 <- predict(modelo2, data.frame(ANO = 2024, UF = diesel$UF))
+pb4 <- predict(modelo2, data.frame(ANO = 2025, UF = diesel$UF))
+pb5 <- predict(modelo2, data.frame(ANO = 2026, UF = diesel$UF))
+pb6 <- predict(modelo2, data.frame(ANO = 2027, UF = diesel$UF))
+pb7 <- predict(modelo2, data.frame(ANO = 2028, UF = diesel$UF))
+pb8 <- predict(modelo2, data.frame(ANO = 2029, UF = diesel$UF))
+pb9 <- predict(modelo2, data.frame(ANO = 2030, UF = diesel$UF))
+
+diesel$"2022" <- pb
+diesel$"2023" <- pb2
+diesel$"2024" <- pb3
+diesel$"2025" <- pb4
+diesel$"2026" <- pb5
+diesel$"2027" <- pb6
+diesel$"2028" <- pb7
+diesel$"2029" <- pb8
+diesel$"2030" <- pb9
+
+```
+
+Separando a predição em um novo dataset
+
+```{r}
+
+df_predict2 <- diesel[ ,c(1:2, 5:13)] %>% unique()
+
+# Transpondo as colunas de anos para linhas para facilitar a analíse no R e Power BI
+
+df_predict2 <- df_predict2 %>% 
+  as_tibble() %>% 
+  pivot_longer(cols = "2022":"2030",
+               names_to = "Ano",
+               values_to = "Preco_Diesel")
+
+# salvando a predição para ser usada no Dashboard do Power BI
+
+write.xlsx(df_predict2, file = "predição_diesel.xlsx")
+```
+
+# Visualizando as predições sobre o preço do Diesel por estado de 2022 até 2030
+
+```{r}
+
+df_predict2 %>% 
+  knitr::kable(caption = "Predição do preço médio do Diesel em reais por estado brasileiro")
+```
+
+
+# Plotando um Scatter Plot da predição 
+
+```{r}
+
+ggplot(df_predict2, aes(x = Ano, y = Preco_Diesel)) +
+  geom_point(color = "blue") +
+   labs(
+    title = "Predição do preço médio do Diesel por estado na próxima decada",
+    x = "Ano",
+    y = "Preço médio do Diesel",
+    caption = "Fonte: Grupo 1 - Digital House"
+  )  +
+  geom_smooth(method = "lm", aes(group=1), color = "green") +
+  stat_cor(aes(group=1)) +
+  theme_classic()
+
+
+```
+
+
+# Parte 3 - Preço da Gasolina
+
+
+Carregando o dataset sobre preço da Gasolina da ANP
+
+```{r}
+
+gasolina <- read_xlsx("Gasolina_preco.xlsx", col_names = T)
+```
+
+Plotando um scatter plot para verificar a correlação e o p-value da variável *ano* e *preço da gasolina*
+
+```{r}
+
+ggplot(gasolina, aes(x = ANO, y = Preco_Gasolina)) +
+  geom_point(color = "blue") +
+  labs(
+    title = "Preço da Gasolina por estado",
+    x = "Ano",
+    y = "Preço da Gasolina",
+    caption = "Fonte: ANP"
+  ) +
+  geom_smooth(method = "lm", color = "red")  +
+  stat_cor() +
+  stat_regline_equation(label.y = 1) +
+  theme_classic()
+  
+```
+
+Podemos ver novamente que há uma **correlação positiva** muito alta (0,92) entre o *ano* e o *preço da gasolina*, e isso nos diz que o preço da gasolina aumentou de forma constante no Brasil na última decada.
+
+**Criando o modelo da predição**
+
+```{r}
+
+modelo3 <- lm(Preco_Gasolina ~ ANO + UF, data = gasolina)
+
+summary(modelo3)
+```
+O **R2 de 85%** nos diz que o nosso modelo preditivo explica de forma satisfatória toda a variabilidade dos dados de resposta ao redor de sua média. Isso é um bom sinal sobre o quão bem o modelo se ajustou aos novos dados.
+
+
+Adicionando a predição do preço da Gasolina de 2022 até 2030 por estado no objeto "gasolina"
+
+```{r}
+
+pc  <- predict(modelo3, data.frame(ANO = 2022, UF = gasolina$UF))
+pc2 <- predict(modelo3, data.frame(ANO = 2023, UF = gasolina$UF))
+pc3 <- predict(modelo3, data.frame(ANO = 2024, UF = gasolina$UF))
+pc4 <- predict(modelo3, data.frame(ANO = 2025, UF = gasolina$UF))
+pc5 <- predict(modelo3, data.frame(ANO = 2026, UF = gasolina$UF))
+pc6 <- predict(modelo3, data.frame(ANO = 2027, UF = gasolina$UF))
+pc7 <- predict(modelo3, data.frame(ANO = 2028, UF = gasolina$UF))
+pc8 <- predict(modelo3, data.frame(ANO = 2029, UF = gasolina$UF))
+pc9 <- predict(modelo3, data.frame(ANO = 2030, UF = gasolina$UF))
+
+gasolina$"2022" <- pc
+gasolina$"2023" <- pc2
+gasolina$"2024" <- pc3
+gasolina$"2025" <- pc4
+gasolina$"2026" <- pc5
+gasolina$"2027" <- pc6
+gasolina$"2028" <- pc7
+gasolina$"2029" <- pc8
+gasolina$"2030" <- pc9
+
+```
+
+Separando a predição em um novo dataset
+
+```{r}
+
+df_predict3 <- gasolina[ ,c(1:2, 5:13)] %>% unique()
+
+# Transpondo as colunas de anos para linhas para facilitar a analíse no R e Power BI
+
+df_predict3 <- df_predict3 %>% 
+  as_tibble() %>% 
+  pivot_longer(cols = "2022":"2030",
+               names_to = "Ano",
+               values_to = "Preco_Gasolina")
+
+# salvando a predição para ser usada no Dashboard do Power BI
+
+write.xlsx(df_predict3, file = "predição_gasolina.xlsx")
+```
+
+# Visualizando as predições sobre o preço da Gasolina por estado de 2022 até 2030
+
+```{r}
+
+df_predict3 %>% 
+  knitr::kable(caption = "Predição do preço médio da Gasolina em reais por estado brasileiro")
+```
+
+
+# Plotando um Scatter Plot da predição 
+
+```{r}
+
+ggplot(df_predict3, aes(x = Ano, y = Preco_Gasolina)) +
+  geom_point(color = "blue") +
+   labs(
+    title = "Predição do preço médio da Gasolina por estado na próxima decada",
+    x = "Ano",
+    y = "Preço médio da Gasolina",
+    caption = "Fonte: Grupo 1 - Digital House"
+  )  +
+  geom_smooth(method = "lm", aes(group=1), color = "green") +
+  stat_cor(aes(group=1)) +
+  theme_classic()
+
+
+```
+
+# Parte 4 - Preço do Etanol
+
+Carregando o dataset sobre preço do Etanol da ANP
+
+```{r}
+
+etanol <- read_xlsx("Etanol_preco.xlsx", col_names = T)
+```
+
+Plotando um scatter plot para verificar a correlação e o p-value da variável *ano* e *preço do etanol*
+
+```{r}
+
+ggplot(etanol, aes(x = ANO, y = Etanol_preco)) +
+  geom_point(color = "blue") +
+  labs(
+    title = "Preço do Etanol por estado",
+    x = "Ano",
+    y = "Preço do Etanol",
+    caption = "Fonte: ANP"
+  ) +
+  geom_smooth(method = "lm", color = "red")  +
+  stat_cor() +
+  stat_regline_equation(label.y = 1) +
+  theme_classic()
+  
+```
+
+Podemos ver novamente que há uma **correlação positiva** alta (0,86) entre o *ano* e o *preço do etanol*, e isso nos diz que o preço do etanol aumentou de forma constante no Brasil na última decada.
+
+**Criando o modelo da predição**
+
+Algumas estatisticas descritivas e informações sobre o modelo de predição usando regressão linear
+
+```{r}
+
+modelo4 <- lm(Etanol_preco ~ ANO + UF, data = etanol)
+
+summary(modelo4)
+```
+
+O **R2 ao redor de 85%** nos diz que o nosso modelo preditivo explica de forma satisfatória toda a variabilidade dos dados de resposta ao redor de sua média. Isso é um bom sinal sobre o quão bem o modelo se ajustou aos novos dados.
+
+
+Adicionando a predição do preço do Etanol de 2022 até 2030 por estado no objeto "etanol"
+
+```{r}
+
+pd  <- predict(modelo4, data.frame(ANO = 2022, UF = etanol$UF))
+pd2 <- predict(modelo4, data.frame(ANO = 2023, UF = etanol$UF))
+pd3 <- predict(modelo4, data.frame(ANO = 2024, UF = etanol$UF))
+pd4 <- predict(modelo4, data.frame(ANO = 2025, UF = etanol$UF))
+pd5 <- predict(modelo4, data.frame(ANO = 2026, UF = etanol$UF))
+pd6 <- predict(modelo4, data.frame(ANO = 2027, UF = etanol$UF))
+pd7 <- predict(modelo4, data.frame(ANO = 2028, UF = etanol$UF))
+pd8 <- predict(modelo4, data.frame(ANO = 2029, UF = etanol$UF))
+pd9 <- predict(modelo4, data.frame(ANO = 2030, UF = etanol$UF))
+
+etanol$"2022" <- pd
+etanol$"2023" <- pd2
+etanol$"2024" <- pd3
+etanol$"2025" <- pd4
+etanol$"2026" <- pd5
+etanol$"2027" <- pd6
+etanol$"2028" <- pd7
+etanol$"2029" <- pd8
+etanol$"2030" <- pd9
+
+```
+
+Separando a predição em um novo dataset
+
+```{r}
+
+df_predict4 <- etanol[ ,c(1:2, 5:13)] %>% unique()
+
+# Transpondo as colunas de anos para linhas para facilitar a analíse no R e Power BI
+
+df_predict4 <- df_predict4 %>% 
+  as_tibble() %>% 
+  pivot_longer(cols = "2022":"2030",
+               names_to = "Ano",
+               values_to = "Preco_Etanol")
+
+# salvando a predição para ser usada no Dashboard do Power BI
+
+write.xlsx(df_predict4, file = "predição_etanol.xlsx")
+```
+
+# Visualizando as predições sobre o preço do Etanol por estado de 2022 até 2030
+
+```{r}
+
+df_predict4 %>% 
+  knitr::kable(caption = "Predição do preço médio do Etanol em reais por estado brasileiro")
+```
+
+
+# Plotando um Scatter Plot da predição 
+
+```{r}
+
+ggplot(df_predict4, aes(x = Ano, y = Preco_Etanol)) +
+  geom_point(color = "blue") +
+   labs(
+    title = "Predição do preço médio do Etanol por estado na próxima decada",
+    x = "Ano",
+    y = "Preço médio do Etanol",
+    caption = "Fonte: Grupo 1 - Digital House"
+  )  +
+  geom_smooth(method = "lm", aes(group=1), color = "green") +
+  stat_cor(aes(group=1)) +
+  theme_classic()
+
+
+```
