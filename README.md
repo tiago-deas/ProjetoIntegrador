@@ -16,4 +16,5 @@ Description of each file in the project:
 - Projeto_Integrador_Grupo01.pbix: PBI file;
 - Projeto_Integrador_Grupo01.pdf: PDF showing how our PBI report looks like;
 - AnaliseEstatistica_PI.pdf: Statistical Analysis made using R;
+- R_StatisticalAnalysis: R coding and datasets
 - Apresentação - Projeto Integrador.pdf: Final presentation made with Canvas.
